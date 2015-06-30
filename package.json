@@ -2,10 +2,9 @@
   "name": "linter-moose",
   "linter-package": true,
   "main": "./lib/linter-moose",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Linter to enforce MOOSE finite element framework coding styleguide rules.",
-  "keywords": [
-  ],
+  "keywords": [],
   "repository": "https://github.com/dschwen/linter-moose",
   "license": "MIT",
   "engines": {
