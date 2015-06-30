@@ -11,7 +11,24 @@ findLine = (regexp, start = 0) ->
     return {line: i, match: match}  if match?
   throw new Error('no match found')
 
+isCamelCase = (name) ->
+  /^[a-z][a-zA-Z0-9]*$/.test name
+
 rules =
+  memberFunctionNames: ->
+    # only check .h files
+    return unless extension is 'h'
+
+    messages = []
+    line = -1
+    try
+      loop
+        {line, match} = findLine /^(.*\b(void|Real|RealGradient|int|long| & |bool| \* )\s+)([^\(\s]+)\(/, line+1
+        if not isCamelCase match[3]
+          startPos = match[1].length
+          messages.push {type: 'Error', text: 'Member functions should use camelCase', range:[[line,startPos], [line,startPos + match[3].length]]}
+    return messages
+
   includeGuard: ->
     # only check .h files
     return unless extension is 'h'
@@ -41,8 +58,24 @@ rules =
       return [{type: 'Error', text: 'Include guard incomplete', range:[[0,0], [0,1]]}]
 
     # check the endif
+    if lines.length > 0 and lines[lines.length-1] != ''
+      return [{type: 'Warning', text: 'End the file with a new line', range:[[0,0], [0,1]]}]
+    if lines.length > 1
+      match = /^#endif \/\/(.*)$/.exec lines[lines.length-2]
+      if not match or match[1] != guardName
+        return [{type: 'Warning', text: 'The closing #endif for the include guard should have the guard symbol as a C++-style comment', range:[[lines.length-2,0], [lines.length-2,1]]}]
 
     # check the class name (use guardNameRange)
+    classFound = false
+    line = -1
+    try
+      loop
+        {line, match} = findLine /^\s*class\s+([^:\s<;]+)/, line+1
+        if match[1].toUpperCase() + '_H' == guardName
+          classFound = true
+          break
+    if not classFound
+      return [{type: 'Error', text: 'Include guard should be CLASSNAME_H', range: guardNameRange}]
 
   spaceBeforeBrace: ->
     messages = []
@@ -54,6 +87,17 @@ rules =
           messages.push {type: 'Error', text: 'No empty lines before closing braces', range:[[line-1,0], [line-1,1]]}
     return messages
 
+  virtualDestructors: ->
+    messages = []
+    line = -1
+    try
+      loop
+        {line, match} = findLine /^(\s*)([^\s]*)(\s*)(~[^\(\s]+)\s*\(/, line+1
+        startPos = match[1].length + match[2].length + match[3].length
+        if match[2] != 'virtual'
+          messages.push {type: 'Error', text: 'All destructors should be virtual', range:[[line,startPos], [line,startPos + match[4].length]]}
+    return messages
+
   openBraceNewLine: ->
     messages = []
     line = -1
@@ -61,12 +105,15 @@ rules =
       loop
         {line, match} = findLine /(^\s*)(.*)(\s*)\{(.*)$/, line+1
         bracePos = match[1].length + match[2].length + match[3].length
-        if match[2] != ''
-          messages.push {type: 'Warn', text: 'Opening braces should be on a new line', range:[[line,bracePos], [line,bracePos+1]]}
+
+        if match[2] != '' and match[2] != '///@'
+          messages.push {type: 'Warning', text: 'Opening braces should be on a new line', range:[[line,bracePos], [line,bracePos+1]]}
+
         if match[4] != ''
-          messages.push {type: 'Warn', text: 'Opening braces should be followed by a new line', range:[[line,bracePos+1], [line,bracePos+1+match[4].length]]}
-        if line+1 < lines.length and /^\s*$/.test lines[line+1]
+          messages.push {type: 'Warning', text: 'Opening braces should be followed by a new line', range:[[line,bracePos+1], [line,bracePos+1+match[4].length]]}
+        else if line+1 < lines.length and /^\s*$/.test lines[line+1]
           messages.push {type: 'Error', text: 'No empty lines after opening braces', range:[[line+1,0], [line+1,1]]}
+
     return messages
 
 
