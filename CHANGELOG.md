@@ -1,3 +1,8 @@
+## 0.3.0
+* Enforce prefix increment in for loops
+* Start working on operator whitespace checks
+* Fix virtual destructor test
+
 ## 0.2.0
 * More include guard checks
 * Member function camelCase

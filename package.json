@@ -8,7 +8,7 @@
   "repository": "https://github.com/dschwen/linter-moose",
   "license": "MIT",
   "engines": {
-    "atom": ">=1.0.0 <2.0.0"
+    "atom": ">0.200.0 <2.0.0"
   },
   "dependencies": {
     "xregexp": "~2.0.0"

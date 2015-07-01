@@ -17,7 +17,7 @@ isCamelCase = (name) ->
 rules =
   memberFunctionNames: ->
     # only check .h files
-    return unless extension is 'h'
+    return unless extension is '.h'
 
     messages = []
     line = -1
@@ -31,7 +31,7 @@ rules =
 
   includeGuard: ->
     # only check .h files
-    return unless extension is 'h'
+    return unless extension is '.h'
 
     guardName = null
 
@@ -88,6 +88,8 @@ rules =
     return messages
 
   virtualDestructors: ->
+    return unless extension is '.h'
+
     messages = []
     line = -1
     try
@@ -98,6 +100,53 @@ rules =
           messages.push {type: 'Error', text: 'All destructors should be virtual', range:[[line,startPos], [line,startPos + match[4].length]]}
     return messages
 
+  prefixIncrement: ->
+    return unless extension is '.C'
+
+    messages = []
+    line = -1
+    try
+      loop
+        {line, match} = findLine /^(\s*for\s*\([^;]*;[^;]*;\s*)(([^+\)]+)\+\+)\s*\)/, line+1
+        startPos = match[1].length
+        messages.push {type: 'Error', text: "Use prefix increment ++#{match[3]}. It is never slower and sometimes faster", range:[[line,startPos], [line,startPos + match[2].length]]}
+    return messages
+
+  operatorWhitespace: ->
+    messages = []
+    editor.scan /(.)(\s?)(\+|-|\/|\*|%|==|<|>|<=|>=|<|>|<<|>>|\+=|-=|,|\)|\()(\s?)/, (item) ->
+      op = item.match[3]
+      before = item.match[2] != ' '
+      after  = item.match[4] != ' '
+
+      # <> is ok (templates)
+      if (op == '>' and item.match[1] == '<') or
+         (op == '<' and item.match[5] == '>')
+        return
+
+      # // /* */ ** are ok (templates)
+      if (op == '*' and item.match[1] == '/') or
+         (op == '*' and item.match[5] == '/') or
+         (op == '*' and item.match[5] == '*') or (op == '*' and item.match[1] == '*') or
+         (op == '/' and item.match[5] == '/') or (op == '/' and item.match[1] == '/') or
+         (op == '/' and item.match[5] == '*') or
+         (op == '/' and item.match[1] == '*')
+        return
+
+      if (op == '(' and not after) or
+         (op == ')' and not before)
+        messages.push {type: 'Warning', text: 'No whitespace on the interior side of a brace', range:item.range}
+
+      if op == ',' and after
+        messages.push {type: 'Warning', text: 'Please leave whitespace after comma operators', range:item.range}
+
+      if (op != '*' and (before or after)) or
+         (op == '*' and not /[\(]/.test item.match[1].match and before) or
+         (op == '*' and /[-+\/\*]/.test item.match[1].match and (before or after))
+        messages.push {type: 'Error', text: 'Please leave whitespace around binary operators', range:item.range}
+
+    return messages
+
   openBraceNewLine: ->
     messages = []
     line = -1
@@ -106,7 +155,10 @@ rules =
         {line, match} = findLine /(^\s*)(.*)(\s*)\{(.*)$/, line+1
         bracePos = match[1].length + match[2].length + match[3].length
 
-        if match[2] != '' and match[2] != '///@'
+        # allow doxygen ///@{ and empty body {}
+        continue if match[2] == '///@' or match[4] == '}'
+
+        if match[2] != ''
           messages.push {type: 'Warning', text: 'Opening braces should be on a new line', range:[[line,bracePos], [line,bracePos+1]]}
 
         if match[4] != ''
@@ -160,7 +212,7 @@ module.exports = LinterMoose =
         if dotPos < 0
           extension = null
         else
-          extension = path.substr dotPos+1
+          extension = path.substr dotPos
 
         # get the current editor text as an array of lines
         lines = editor.getText().split '\n'
