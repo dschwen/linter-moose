@@ -19,5 +19,11 @@
         "1.0.0": "provideLinter"
       }
     }
-  }
+  },
+  "dependencies": {
+    "atom-package-deps": "^2.0.1"
+  },
+  "package-deps": [
+    "linter"
+  ]
 }

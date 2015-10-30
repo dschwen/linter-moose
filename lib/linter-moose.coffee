@@ -184,11 +184,7 @@ module.exports = LinterMoose =
   subscriptions: null
 
   activate: ->
-    if not atom.packages.getLoadedPackage 'linter'
-      atom.notifications.addError 'Linter package not found',
-        detail: '[linter-moose] `linter` package not found. \
-                 Please install https://github.com/AtomLinter/Linter'
-
+    require('atom-package-deps').install 'linter-moose'
     @subscriptions = new CompositeDisposable
     @subscriptions.add atom.config.observe 'linter-example.executablePath',
       (executablePath) =>
